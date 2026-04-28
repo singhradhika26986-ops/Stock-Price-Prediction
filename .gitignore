@@ -1,0 +1,14 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.streamlit/
+data/*.csv
+models/*
+!models/.gitkeep
+!data/.gitkeep
+logs/*
+monitoring/*
+!logs/.gitkeep
+!monitoring/.gitkeep

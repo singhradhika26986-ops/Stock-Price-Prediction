@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: stock-price-prediction-api
+    env: docker
+    plan: free
+    autoDeploy: true
