@@ -2,6 +2,8 @@
 
 Production-ready stock price prediction system with end-to-end ingestion, validation, feature engineering, experiment tracking, model training, backtesting, live API serving, scheduled retraining, and a real-time dashboard.
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/singhradhika26986-ops/Stock-Price-Prediction/tree/main)
+
 ## Features
 
 - Historical and near real-time OHLCV ingestion using `yfinance`
@@ -171,6 +173,11 @@ docker run -p 8000:8000 --env-file .env stock-predictor
 4. Set runtime secrets such as `API_KEY`, scheduler settings, and dashboard API URL in the cloud dashboard.
 5. After deploy, open `/health` on the public API URL to verify the service is healthy.
 6. Open the dashboard URL and confirm ticker inputs return predictions.
+
+## Public Repo
+
+- GitHub repository: [singhradhika26986-ops/Stock-Price-Prediction](https://github.com/singhradhika26986-ops/Stock-Price-Prediction)
+- Render one-click deploy: [Deploy this repo on Render](https://render.com/deploy?repo=https://github.com/singhradhika26986-ops/Stock-Price-Prediction/tree/main)
 
 ## Notes
 
