@@ -4,3 +4,45 @@ services:
     env: docker
     plan: free
     autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: API_KEY
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DEFAULT_PERIOD
+        value: 5y
+      - key: DEFAULT_INTERVAL
+        value: 1d
+      - key: FORECAST_HORIZON
+        value: 5
+      - key: SEQUENCE_LENGTH
+        value: 20
+      - key: MODEL_DIR
+        value: models
+      - key: DATA_DIR
+        value: data
+      - key: LOG_DIR
+        value: logs
+      - key: MONITORING_DIR
+        value: monitoring
+      - key: ENABLE_SCHEDULER
+        value: "true"
+      - key: RETRAIN_INTERVAL_MINUTES
+        value: "360"
+      - key: SCHEDULED_TICKERS
+        value: AAPL,MSFT,GOOGL
+  - type: web
+    name: stock-price-prediction-dashboard
+    env: docker
+    plan: free
+    autoDeploy: true
+    dockerfilePath: ./dashboard/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: STREAMLIT_API_BASE_URL
+        sync: false
+      - key: API_KEY
+        sync: false

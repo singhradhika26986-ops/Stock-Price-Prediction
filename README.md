@@ -17,6 +17,7 @@ Production-ready stock price prediction system with end-to-end ingestion, valida
 - APScheduler-based automated retraining for configured ticker sets
 - Streamlit dashboard for live forecasts, confidence bands, backtests, retraining trends, and API monitoring
 - Docker packaging plus GitHub Actions CI/CD hooks for testing and deployment
+- Render Blueprint and Railway config included for cloud deployment
 
 ## Project Structure
 
@@ -147,6 +148,29 @@ docker run -p 8000:8000 --env-file .env stock-predictor
 - Use persistent storage for `models/`, `monitoring/`, and `logs/` if you retrain in production
 - If the dashboard is deployed separately, set `STREAMLIT_API_BASE_URL` to the public API URL and reuse the same `API_KEY`
 - For GitHub Actions based deployment, add `RENDER_DEPLOY_HOOK_URL` as a repository secret
+
+### Render Blueprint
+
+- `render.yaml` defines two web services:
+- `stock-price-prediction-api` for FastAPI
+- `stock-price-prediction-dashboard` for Streamlit
+- The API service uses `healthCheckPath: /health`
+- Keep `API_KEY` and `STREAMLIT_API_BASE_URL` as unsynced secrets in Render
+
+### Railway
+
+- `railway.toml` configures Dockerfile-based deploys and a `uvicorn` start command bound to `0.0.0.0:$PORT`
+- Railway injects the `PORT` variable at runtime, so do not hardcode a cloud port
+- Add service variables from `.env.example` in the Railway Variables tab
+
+### Manual Cloud Steps
+
+1. Push this repository to GitHub.
+2. In Render, create a new Blueprint or Web Service from the repository and allow auto-deploy on push.
+3. In Railway, create a new project from the repository and import the Docker service.
+4. Set runtime secrets such as `API_KEY`, scheduler settings, and dashboard API URL in the cloud dashboard.
+5. After deploy, open `/health` on the public API URL to verify the service is healthy.
+6. Open the dashboard URL and confirm ticker inputs return predictions.
 
 ## Notes
 
