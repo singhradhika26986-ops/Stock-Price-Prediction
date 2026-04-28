@@ -4,6 +4,8 @@ Production-ready stock price prediction system with end-to-end ingestion, valida
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/singhradhika26986-ops/Stock-Price-Prediction/tree/main)
 
+Live app URL: [https://stock-price-prediction-api.onrender.com](https://stock-price-prediction-api.onrender.com)
+
 ## Features
 
 - Historical and near real-time OHLCV ingestion using `yfinance`
@@ -96,16 +98,21 @@ uvicorn app.main:app --reload
 
 Key endpoints:
 
+- `GET /`
 - `GET /health`
 - `POST /train`
 - `GET /predict/{ticker}?days_ahead=5`
 - `GET /insights/{ticker}`
 - `GET /metrics/{ticker}`
+- `POST /public/train`
+- `GET /public/predict/{ticker}?days_ahead=5`
+- `GET /public/metrics/{ticker}`
 - `GET /monitoring/summary`
 - `GET /monitoring/requests`
 - `GET /monitoring/training-history?ticker=AAPL`
 
 Protected endpoints require the `x-api-key` header.
+Public demo endpoints are available for the live homepage experience.
 
 ## Dashboard
 
