@@ -61,16 +61,20 @@ class PredictorService:
                 interval=settings.default_interval,
             )
             feature_frame = self.engineer.transform(history, horizon=bundle["horizon"])
-            feature_frame = feature_frame.dropna().copy()
+            feature_frame = feature_frame.dropna(subset=["Date", "Close"]).copy()
             if feature_frame.empty:
-                raise FileNotFoundError(f"Not enough recent data available for {ticker.upper()} to generate a prediction.")
+                feature_frame = history.dropna(subset=["Date", "Close"]).copy()
+                if feature_frame.empty:
+                    raise FileNotFoundError(f"Not enough recent data available for {ticker.upper()} to generate a prediction.")
 
             feature_columns = bundle["feature_columns"]
             model_name = bundle["model_name"]
             residual_std = float(bundle.get("residual_std", 0.0))
             last_close = float(feature_frame["Close"].iloc[-1])
 
-            if model_name == "lstm":
+            if model_name == "moving_average_fallback":
+                base_pred = float(bundle.get("moving_average", last_close))
+            elif model_name == "lstm":
                 sequence = build_inference_sequence(
                     feature_frame[feature_columns],
                     bundle["feature_scaler"],
@@ -79,6 +83,8 @@ class PredictorService:
                 preds_scaled = bundle["model"].predict(sequence, verbose=0).reshape(-1)
                 base_pred = bundle["target_scaler"].inverse_transform(preds_scaled.reshape(-1, 1)).reshape(-1)[0]
             else:
+                if not set(feature_columns).issubset(feature_frame.columns):
+                    feature_frame = self.engineer.transform(history, horizon=bundle["horizon"])
                 latest = feature_frame[feature_columns].iloc[[-1]]
                 if bundle.get("use_scaler", False):
                     latest = bundle["feature_scaler"].transform(latest)
