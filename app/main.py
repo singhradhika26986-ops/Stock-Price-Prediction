@@ -17,6 +17,18 @@ configure_logging()
 logger = logging.getLogger(__name__)
 
 
+def error_payload(message: str) -> dict:
+    return {
+        "status": "error",
+        "message": message,
+        "model": None,
+        "last_close": None,
+        "forecast": [],
+        "uncertainty": {},
+        "metrics": {},
+    }
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     retraining_scheduler.start()
@@ -42,16 +54,16 @@ app.include_router(router)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
     logger.warning("Request validation error: %s", exc)
-    return JSONResponse(status_code=422, content={"status": "error", "message": str(exc)})
+    return JSONResponse(status_code=422, content=error_payload(str(exc)))
 
 
 @app.exception_handler(FastAPIHTTPException)
 async def http_exception_handler(_: Request, exc: FastAPIHTTPException) -> JSONResponse:
     logger.warning("HTTP exception: %s", exc.detail)
-    return JSONResponse(status_code=exc.status_code, content={"status": "error", "message": str(exc.detail)})
+    return JSONResponse(status_code=exc.status_code, content=error_payload(str(exc.detail)))
 
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(_: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled application error")
-    return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
+    return JSONResponse(status_code=500, content=error_payload(str(exc)))

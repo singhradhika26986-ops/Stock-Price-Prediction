@@ -32,7 +32,11 @@ class TrainingPipeline:
         self.tracker = ExperimentTracker()
 
     def run(self, ticker: str, period: str, interval: str, horizon: int) -> dict:
+        ticker = ticker.strip().upper()
+        period = self._ensure_training_period(period)
         raw = self.ingestor.fetch(ticker=ticker, period=period, interval=interval)
+        logger.info("Training data shape for %s: %s", ticker, raw.shape)
+        logger.info("Training data preview for %s:\n%s", ticker, raw.head().to_string())
         engineered = self.engineer.transform(raw, horizon=horizon)
         raw.to_csv(settings.data_path / f"{ticker}_raw.csv", index=False)
         engineered.to_csv(settings.data_path / f"{ticker}_features.csv", index=False)
@@ -146,6 +150,10 @@ class TrainingPipeline:
             },
             "retrained_at": best_bundle["trained_at"],
         }
+
+    @staticmethod
+    def _ensure_training_period(period: str) -> str:
+        return "2y"
 
     def _train_tabular_model(self, model_name, x_train, y_train, x_test, y_test, feature_columns, test_dates, horizon):
         scaler = StandardScaler()

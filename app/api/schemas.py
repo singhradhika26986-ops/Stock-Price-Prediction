@@ -22,6 +22,7 @@ class TrainResponse(SuccessResponse):
     ticker: str
     best_model: str
     model: str
+    source: str = "live_or_fallback"
     last_close: float | None = None
     forecast: list[float] = []
     uncertainty: dict = {}

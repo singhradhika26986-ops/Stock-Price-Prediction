@@ -24,7 +24,8 @@ class Settings(BaseSettings):
     enable_scheduler: bool = True
     retrain_interval_minutes: int = 360
     scheduled_tickers: str = "AAPL,MSFT,GOOGL"
-    default_live_lookback_period: str = "1mo"
+    default_live_lookback_period: str = "6mo"
+    alpha_vantage_api_key: str = "demo"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

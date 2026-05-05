@@ -21,6 +21,7 @@ class TrainerService:
             result["status"] = "success"
             result["message"] = "Training completed successfully."
             result["model"] = result["best_model"]
+            result["source"] = "live_or_fallback"
             result["last_close"] = None
             result["forecast"] = []
             result["uncertainty"] = {}

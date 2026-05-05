@@ -23,6 +23,18 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+def error_payload(message: str) -> dict:
+    return {
+        "status": "error",
+        "message": message,
+        "model": None,
+        "last_close": None,
+        "forecast": [],
+        "uncertainty": {},
+        "metrics": {},
+    }
+
+
 @router.get("/", response_class=HTMLResponse)
 def landing_page() -> str:
     return """
@@ -294,7 +306,7 @@ def train_model(request: TrainRequest):
         return TrainResponse(**result)
     except Exception as exc:
         logger.exception("Private training endpoint failed for %s", request.ticker)
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
+        return JSONResponse(status_code=500, content=error_payload(str(exc)))
 
 
 @router.get("/predict/{ticker}", response_model=PredictionResponse, responses={500: {"model": ErrorResponse}}, dependencies=[Depends(require_api_key)])
@@ -304,7 +316,7 @@ def predict(ticker: str, days_ahead: int = 5):
         return PredictionResponse(**result)
     except Exception as exc:
         logger.exception("Private prediction endpoint failed for %s", ticker)
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
+        return JSONResponse(status_code=500, content=error_payload(str(exc)))
 
 
 @router.post("/public/train", response_model=TrainResponse, responses={500: {"model": ErrorResponse}})
@@ -319,7 +331,7 @@ def public_train_model(request: TrainRequest):
         return TrainResponse(**result)
     except Exception as exc:
         logger.exception("Public training endpoint failed for %s", request.ticker)
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
+        return JSONResponse(status_code=500, content=error_payload(str(exc)))
 
 
 @router.get("/public/predict/{ticker}", response_model=PredictionResponse, responses={500: {"model": ErrorResponse}})
@@ -329,7 +341,7 @@ def public_predict(ticker: str, days_ahead: int = 5):
         return PredictionResponse(**result)
     except Exception as exc:
         logger.exception("Public prediction endpoint failed for %s", ticker)
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
+        return JSONResponse(status_code=500, content=error_payload(str(exc)))
 
 
 @router.get("/insights/{ticker}", response_model=InsightResponse, responses={500: {"model": ErrorResponse}}, dependencies=[Depends(require_api_key)])
@@ -339,7 +351,7 @@ def insights(ticker: str):
         return InsightResponse(**result)
     except Exception as exc:
         logger.exception("Insights endpoint failed for %s", ticker)
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
+        return JSONResponse(status_code=500, content=error_payload(str(exc)))
 
 
 @router.get("/metrics/{ticker}", response_model=ModelMetricsResponse, responses={500: {"model": ErrorResponse}}, dependencies=[Depends(require_api_key)])
@@ -354,7 +366,7 @@ def model_metrics(ticker: str):
         )
     except Exception as exc:
         logger.exception("Metrics endpoint failed for %s", ticker)
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
+        return JSONResponse(status_code=500, content=error_payload(str(exc)))
 
 
 @router.get("/public/metrics/{ticker}", response_model=ModelMetricsResponse, responses={500: {"model": ErrorResponse}})
@@ -369,7 +381,7 @@ def public_model_metrics(ticker: str):
         )
     except Exception as exc:
         logger.exception("Public metrics endpoint failed for %s", ticker)
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
+        return JSONResponse(status_code=500, content=error_payload(str(exc)))
 
 
 @router.get("/monitoring/summary", response_model=MonitoringSummaryResponse, dependencies=[Depends(require_api_key)])

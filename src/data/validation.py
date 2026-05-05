@@ -9,6 +9,7 @@ class DataValidationError(ValueError):
 
 class StockDataValidator:
     required_columns = {"Date", "Open", "High", "Low", "Close", "Volume"}
+    min_rows = 51
 
     def validate(self, frame: pd.DataFrame) -> pd.DataFrame:
         missing_columns = self.required_columns.difference(frame.columns)
@@ -41,4 +42,6 @@ class StockDataValidator:
             raise DataValidationError("Detected invalid OHLC price relationships.")
 
         validated = validated.sort_values("Date").drop_duplicates(subset=["Date"], keep="last").reset_index(drop=True)
+        if len(validated) < self.min_rows:
+            raise DataValidationError(f"Not enough stock data rows. Expected at least {self.min_rows}, got {len(validated)}.")
         return validated
