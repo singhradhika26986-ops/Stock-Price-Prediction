@@ -71,38 +71,48 @@ class TrainingPipeline:
         backtest_frames = {}
 
         for model_name in ["linear_regression", "random_forest", "xgboost"]:
-            metrics, bundle, backtest_frame = self._train_tabular_model(
-                model_name,
-                x_train,
-                y_train,
-                x_test,
-                y_test,
-                feature_columns,
-                test_frame["Date"],
-                horizon,
-            )
-            model_results[model_name] = metrics
-            bundle_candidates[model_name] = bundle
-            backtest_frames[model_name] = backtest_frame
+            try:
+                metrics, bundle, backtest_frame = self._train_tabular_model(
+                    model_name,
+                    x_train,
+                    y_train,
+                    x_test,
+                    y_test,
+                    feature_columns,
+                    test_frame["Date"],
+                    horizon,
+                )
+                model_results[model_name] = metrics
+                bundle_candidates[model_name] = bundle
+                backtest_frames[model_name] = backtest_frame
+                self.tracker.log_run(
+                    ticker=ticker,
+                    model_name=model_name,
+                    params={"period": period, "interval": interval, "horizon": horizon},
+                    metrics=metrics,
+                    artifacts={},
+                )
+            except Exception as exc:
+                logger.exception("%s training failed for %s; continuing with other models.", model_name, ticker)
+
+        try:
+            lstm_metrics, lstm_bundle, lstm_backtest = self._train_lstm(train_frame, test_frame, feature_columns, horizon)
+            model_results["lstm"] = lstm_metrics
+            bundle_candidates["lstm"] = lstm_bundle
+            backtest_frames["lstm"] = lstm_backtest
             self.tracker.log_run(
                 ticker=ticker,
-                model_name=model_name,
+                model_name="lstm",
                 params={"period": period, "interval": interval, "horizon": horizon},
-                metrics=metrics,
+                metrics=lstm_metrics,
                 artifacts={},
             )
+        except Exception as exc:
+            logger.exception("lstm training failed for %s; continuing with available models.", ticker)
 
-        lstm_metrics, lstm_bundle, lstm_backtest = self._train_lstm(train_frame, test_frame, feature_columns, horizon)
-        model_results["lstm"] = lstm_metrics
-        bundle_candidates["lstm"] = lstm_bundle
-        backtest_frames["lstm"] = lstm_backtest
-        self.tracker.log_run(
-            ticker=ticker,
-            model_name="lstm",
-            params={"period": period, "interval": interval, "horizon": horizon},
-            metrics=lstm_metrics,
-            artifacts={},
-        )
+        if not model_results:
+            logger.warning("All candidate models failed for %s; saving simple fallback model.", ticker)
+            return self._save_simple_fallback_model(ticker=ticker, raw=raw, horizon=horizon)
 
         best_model = min(model_results, key=lambda name: model_results[name]["rmse"])
         best_bundle = bundle_candidates[best_model]
