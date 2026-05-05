@@ -1,6 +1,16 @@
 from pydantic import BaseModel, Field
 
 
+class ErrorResponse(BaseModel):
+    status: str = "error"
+    message: str
+
+
+class SuccessResponse(BaseModel):
+    status: str = "success"
+    message: str
+
+
 class TrainRequest(BaseModel):
     ticker: str = Field(..., description="Ticker symbol")
     period: str = Field(default="5y")
@@ -8,26 +18,34 @@ class TrainRequest(BaseModel):
     horizon: int = Field(default=5, ge=1, le=30)
 
 
-class TrainResponse(BaseModel):
+class TrainResponse(SuccessResponse):
     ticker: str
     best_model: str
+    model: str
+    last_close: float | None = None
+    forecast: list[float] = []
+    uncertainty: dict = {}
     metrics: dict
     artifacts: dict
     retrained_at: str
 
 
-class PredictionResponse(BaseModel):
+class PredictionResponse(SuccessResponse):
     ticker: str
     model_name: str
+    model: str
     generated_at: str
     last_close: float
     horizon: int
+    forecast: list[float]
     predictions: list[float]
     confidence_lower: list[float]
     confidence_upper: list[float]
     quantiles: dict[str, list[float]]
     probabilistic_paths: list[list[float]]
     uncertainty_score: float
+    uncertainty: dict
+    metrics: dict
 
 
 class InsightResponse(BaseModel):

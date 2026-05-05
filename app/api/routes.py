@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import HTMLResponse
+import logging
+
+from fastapi import APIRouter, Depends
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api.schemas import (
+    ErrorResponse,
     InsightResponse,
     ModelMetricsResponse,
     MonitoringSummaryResponse,
@@ -17,6 +20,7 @@ from app.services.predictor import predictor_service
 from app.services.trainer import trainer_service
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -225,7 +229,7 @@ def landing_page() -> str:
           body: JSON.stringify({ ticker, period: "5y", interval: "1d", horizon: Number(document.getElementById("days").value) })
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || "Training failed.");
+        if (!response.ok) throw new Error(data.message || "Training failed.");
         setStatus(`Training completed. Best model: ${data.best_model}.`);
         await runPrediction();
       } catch (error) {
@@ -241,7 +245,7 @@ def landing_page() -> str:
       try {
         const response = await fetch(`/public/predict/${ticker}?days_ahead=${days}`);
         const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || "Prediction failed.");
+        if (!response.ok) throw new Error(data.message || "Prediction failed.");
 
         document.getElementById("modelName").textContent = data.model_name;
         document.getElementById("lastClose").textContent = data.last_close.toFixed(2);
@@ -278,81 +282,94 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@router.post("/train", response_model=TrainResponse, dependencies=[Depends(require_api_key)])
-def train_model(request: TrainRequest) -> TrainResponse:
-    result = trainer_service.train(
-        ticker=request.ticker,
-        period=request.period,
-        interval=request.interval,
-        horizon=request.horizon,
-    )
-    return TrainResponse(**result)
+@router.post("/train", response_model=TrainResponse, responses={500: {"model": ErrorResponse}}, dependencies=[Depends(require_api_key)])
+def train_model(request: TrainRequest):
+    try:
+        result = trainer_service.train(
+            ticker=request.ticker,
+            period=request.period,
+            interval=request.interval,
+            horizon=request.horizon,
+        )
+        return TrainResponse(**result)
+    except Exception as exc:
+        logger.exception("Private training endpoint failed for %s", request.ticker)
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
 
 
-@router.get("/predict/{ticker}", response_model=PredictionResponse, dependencies=[Depends(require_api_key)])
-def predict(ticker: str, days_ahead: int = 5) -> PredictionResponse:
+@router.get("/predict/{ticker}", response_model=PredictionResponse, responses={500: {"model": ErrorResponse}}, dependencies=[Depends(require_api_key)])
+def predict(ticker: str, days_ahead: int = 5):
     try:
         result = predictor_service.predict(ticker=ticker, days_ahead=days_ahead)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return PredictionResponse(**result)
+        return PredictionResponse(**result)
+    except Exception as exc:
+        logger.exception("Private prediction endpoint failed for %s", ticker)
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
 
 
-@router.post("/public/train", response_model=TrainResponse)
-def public_train_model(request: TrainRequest) -> TrainResponse:
-    result = trainer_service.train(
-        ticker=request.ticker,
-        period=request.period,
-        interval=request.interval,
-        horizon=request.horizon,
-    )
-    return TrainResponse(**result)
+@router.post("/public/train", response_model=TrainResponse, responses={500: {"model": ErrorResponse}})
+def public_train_model(request: TrainRequest):
+    try:
+        result = trainer_service.train(
+            ticker=request.ticker,
+            period=request.period,
+            interval=request.interval,
+            horizon=request.horizon,
+        )
+        return TrainResponse(**result)
+    except Exception as exc:
+        logger.exception("Public training endpoint failed for %s", request.ticker)
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
 
 
-@router.get("/public/predict/{ticker}", response_model=PredictionResponse)
-def public_predict(ticker: str, days_ahead: int = 5) -> PredictionResponse:
+@router.get("/public/predict/{ticker}", response_model=PredictionResponse, responses={500: {"model": ErrorResponse}})
+def public_predict(ticker: str, days_ahead: int = 5):
     try:
         result = predictor_service.predict(ticker=ticker, days_ahead=days_ahead)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return PredictionResponse(**result)
+        return PredictionResponse(**result)
+    except Exception as exc:
+        logger.exception("Public prediction endpoint failed for %s", ticker)
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
 
 
-@router.get("/insights/{ticker}", response_model=InsightResponse, dependencies=[Depends(require_api_key)])
-def insights(ticker: str) -> InsightResponse:
+@router.get("/insights/{ticker}", response_model=InsightResponse, responses={500: {"model": ErrorResponse}}, dependencies=[Depends(require_api_key)])
+def insights(ticker: str):
     try:
         result = predictor_service.insights(ticker=ticker)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return InsightResponse(**result)
+        return InsightResponse(**result)
+    except Exception as exc:
+        logger.exception("Insights endpoint failed for %s", ticker)
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
 
 
-@router.get("/metrics/{ticker}", response_model=ModelMetricsResponse, dependencies=[Depends(require_api_key)])
-def model_metrics(ticker: str) -> ModelMetricsResponse:
+@router.get("/metrics/{ticker}", response_model=ModelMetricsResponse, responses={500: {"model": ErrorResponse}}, dependencies=[Depends(require_api_key)])
+def model_metrics(ticker: str):
     try:
         result = predictor_service.insights(ticker=ticker)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return ModelMetricsResponse(
-        ticker=result["ticker"],
-        model_name=result["model_name"],
-        metrics=result["metrics"],
-        drift_summary=result["drift_summary"],
-    )
+        return ModelMetricsResponse(
+            ticker=result["ticker"],
+            model_name=result["model_name"],
+            metrics=result["metrics"],
+            drift_summary=result["drift_summary"],
+        )
+    except Exception as exc:
+        logger.exception("Metrics endpoint failed for %s", ticker)
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
 
 
-@router.get("/public/metrics/{ticker}", response_model=ModelMetricsResponse)
-def public_model_metrics(ticker: str) -> ModelMetricsResponse:
+@router.get("/public/metrics/{ticker}", response_model=ModelMetricsResponse, responses={500: {"model": ErrorResponse}})
+def public_model_metrics(ticker: str):
     try:
         result = predictor_service.insights(ticker=ticker)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return ModelMetricsResponse(
-        ticker=result["ticker"],
-        model_name=result["model_name"],
-        metrics=result["metrics"],
-        drift_summary=result["drift_summary"],
-    )
+        return ModelMetricsResponse(
+            ticker=result["ticker"],
+            model_name=result["model_name"],
+            metrics=result["metrics"],
+            drift_summary=result["drift_summary"],
+        )
+    except Exception as exc:
+        logger.exception("Public metrics endpoint failed for %s", ticker)
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(exc)})
 
 
 @router.get("/monitoring/summary", response_model=MonitoringSummaryResponse, dependencies=[Depends(require_api_key)])
